@@ -17,13 +17,13 @@
 /**
  * Class to manage seb files, used in part to abstract some of the Moodle file manager logic.
  *
- * @package    quizaccess_safeexambrowser
+ * @package    quizaccess_seb
  * @author     Andrew Madden <andrewmadden@catalyst-au.net>
  * @copyright  2019 Catalyst IT
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace quizaccess_safeexambrowser;
+namespace quizaccess_seb;
 
 use stored_file;
 

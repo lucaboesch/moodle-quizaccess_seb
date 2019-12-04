@@ -17,16 +17,16 @@
 /**
  * PHPUnit tests for plugin file manager.
  *
- * @package    quizaccess_safeexambrowser
+ * @package    quizaccess_seb
  * @author     Andrew Madden <andrewmadden@catalyst-au.net>
  * @copyright  2019 Catalyst IT
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use quizaccess_safeexambrowser\file_manager;
+use quizaccess_seb\file_manager;
 
 defined('MOODLE_INTERNAL') || die();
- 
+
 class file_manager_testcase extends advanced_testcase {
 
     /**
