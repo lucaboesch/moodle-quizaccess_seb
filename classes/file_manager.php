@@ -69,7 +69,7 @@ class file_manager {
         $file  = null;
         $fs = get_file_storage();
 
-        if (get_coursemodule_from_id('quiz', $cmid)) { // Validate course module id.
+        if (get_coursemodule_from_id('quiz', $cmid) && !empty($itemid)) { // Validate course module id.
             $context = \context_module::instance($cmid);
             $areafiles = $fs->get_area_files($context->id, self::COMPONENT, self::FILE_AREA, $itemid, 'id DESC', false);
             if (count($areafiles) === 1) {
@@ -124,10 +124,34 @@ class file_manager {
         $fs = get_file_storage();
         if (get_coursemodule_from_id('quiz', $cmid)) { // Validate course module id.
             $context = \context_module::instance($cmid);
+            if (!$fs->file_exists($context->id, self::COMPONENT, self::FILE_AREA,
+                    $file->get_itemid(), $file->get_filepath(), $file->get_filename())) {
+                $newfile = $fs->create_file_from_storedfile([
+                    'contextid' => $context->id,
+                    'component' => self::COMPONENT,
+                    'filearea' => self::FILE_AREA,
+                ], $file);
+            }
+        }
+    }
+
+    /**
+     * Create a new file with the same file name and contents of input, in the safe exam browser file area.
+     *
+     * @param stored_file $file
+     * @param string $userid
+     * @throws \file_exception
+     * @throws \stored_file_creation_exception
+     */
+    public function save_file_in_user_draft(stored_file $file, string $userid) {
+        $fs = get_file_storage();
+        $context = \context_user::instance($userid);
+        if (!$fs->file_exists($context->id, 'user', 'draft',
+                $file->get_itemid(), $file->get_filepath(), $file->get_filename())) {
             $newfile = $fs->create_file_from_storedfile([
                 'contextid' => $context->id,
-                'component' => self::COMPONENT,
-                'filearea' => self::FILE_AREA,
+                'component' => 'user',
+                'filearea' => 'draft',
             ], $file);
         }
     }

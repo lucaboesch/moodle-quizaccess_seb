@@ -172,6 +172,20 @@ class file_manager_testcase extends advanced_testcase {
     }
 
     /**
+     * Test that a file is not returned if itemid is empty.
+     */
+    public function test_get_module_file_if_itemid_empty() {
+        $fs = get_file_storage();
+        $course = $this->getDataGenerator()->create_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $course->id]);
+        $context = context_module::instance($quiz->cmid);
+
+        $filemanager = new file_manager();
+        $file = $filemanager->get_module_file_by_itemid('', $quiz->cmid);
+        $this->assertNull($file);
+    }
+
+    /**
      * Test that trying to get a module file with and incorrect coursemodule id won't throw an error and just fail returning
      * a file.
      */
@@ -334,6 +348,84 @@ class file_manager_testcase extends advanced_testcase {
         $this->assertEquals('mod_quiz', $savedfile->get_component());
         $this->assertEquals('quizaccess_seb_quizsettings', $savedfile->get_filearea());
         $context = context_module::instance($quiz->cmid);
+        $this->assertEquals($context->id, $savedfile->get_contextid());
+    }
+
+    /**
+     * Test that user draft file is saved successfully to module area.
+     */
+    public function test_file_saved_in_module_if_already_exists() {
+        $user = $this->getDataGenerator()->create_user();
+        $this->setUser($user); // Draft file is based on current user.
+        $course = $this->getDataGenerator()->create_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $course->id]);
+        $fs = get_file_storage();
+
+        // Create file in user draft area to simulate uploading file to form.
+        $context = context_user::instance($user->id);
+        $createdfile = $fs->create_file_from_string([
+            'contextid' => $context->id,
+            'component' => 'user',
+            'filearea' => 'draft',
+            'itemid' => 999,
+            'filepath' => '/',
+            'filename' => 'test.seb',
+        ], 'Hello World!');
+
+        // Save file from draft area to module area.
+        $filemanager = new file_manager();
+        $filemanager->save_file_in_module($createdfile, $quiz->cmid);
+
+        // Test that it was saved correctly in new area.
+        $savedfile = $filemanager->get_module_file_by_itemid(999, $quiz->cmid);
+        $this->assertEquals('test.seb', $savedfile->get_filename());
+        $this->assertEquals('/', $savedfile->get_filepath());
+        $this->assertEquals('Hello World!', $savedfile->get_content());
+        $this->assertEquals('mod_quiz', $savedfile->get_component());
+        $this->assertEquals('quizaccess_seb_quizsettings', $savedfile->get_filearea());
+        $context = context_module::instance($quiz->cmid);
+        $this->assertEquals($context->id, $savedfile->get_contextid());
+        $firstpathhash = $savedfile->get_pathnamehash();
+
+        // Try and resave the file with same details.
+        $filemanager->save_file_in_module($createdfile, $quiz->cmid);
+        $resavedfile = $filemanager->get_module_file_by_itemid(999, $quiz->cmid);
+        $this->assertEquals($firstpathhash, $resavedfile->get_pathnamehash());
+    }
+
+    /**
+     * Test that user draft file is saved successfully to user draft area.
+     */
+    public function test_file_saved_in_user_draft() {
+        $user = $this->getDataGenerator()->create_user();
+        $this->setUser($user); // Draft file is based on current user.
+        $course = $this->getDataGenerator()->create_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $course->id]);
+        $fs = get_file_storage();
+
+        // Create file in user draft area to simulate uploading file to form.
+        $context = context_module::instance($quiz->cmid);
+        $createdfile = $fs->create_file_from_string([
+            'contextid' => $context->id,
+            'component' => 'mod_quiz',
+            'filearea' => 'quizaccess_seb_quizsettings',
+            'itemid' => 999,
+            'filepath' => '/',
+            'filename' => 'test.seb',
+        ], 'Hello World!');
+
+        // Save file from draft area to module area.
+        $filemanager = new file_manager();
+        $filemanager->save_file_in_user_draft($createdfile, $user->id);
+
+        // Test that it was saved correctly in new area.
+        $savedfile = $filemanager->get_form_file_by_itemid(999);
+        $this->assertEquals('test.seb', $savedfile->get_filename());
+        $this->assertEquals('/', $savedfile->get_filepath());
+        $this->assertEquals('Hello World!', $savedfile->get_content());
+        $this->assertEquals('user', $savedfile->get_component());
+        $this->assertEquals('draft', $savedfile->get_filearea());
+        $context = context_user::instance($user->id);
         $this->assertEquals($context->id, $savedfile->get_contextid());
     }
 
