@@ -23,6 +23,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use PHPUnit\Framework\Error\Warning;
 use quizaccess_seb\file_manager;
 
 defined('MOODLE_INTERNAL') || die();
@@ -293,9 +294,11 @@ class file_manager_testcase extends advanced_testcase {
     /**
      * Test files that are not seb configs are not validated as seb config files.
      *
+     * @param mixed $content Test file contents.
+     *
      * @dataProvider invalid_seb_contents_provider
      */
-    public function test_is_invalid_seb_config_unencrypted($content) {
+    public function test_is_invalid_seb_config_unencrypted($content, $expectedwarning) {
         $user = $this->getDataGenerator()->create_user();
         $this->setUser($user); // Draft file is based on current user.
         $fs = get_file_storage();
@@ -311,6 +314,10 @@ class file_manager_testcase extends advanced_testcase {
         ], $content);
 
         $filemanager = new file_manager();
+        // Decryptor will throw warning if not a xml file or gzipped file.
+        if (!empty($expectedwarning)) {
+            $this->expectException(Warning::class);
+        }
         $result = $filemanager->is_file_valid_seb_config($createdfile);
         $this->assertFalse($result);
     }
@@ -436,10 +443,10 @@ class file_manager_testcase extends advanced_testcase {
      */
     public function invalid_seb_contents_provider() : array {
         return [
-            'Plain string' => ['Not valid seb contents'],
-            'XML but not PLIST' => ["<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<root>\n</root>"],
-            'Empty' => [""],
-            'Plain string multiline' => ["Not\nValis\nSeb\nConfig"],
+            'Plain string' => ['Not valid seb contents', true],
+            'XML but not PLIST' => ["<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<root>\n</root>", false],
+            'Empty' => ["", true],
+            'Plain string multiline' => ["Not\nValis\nSeb\nConfig", true],
         ];
     }
 }
