@@ -32,7 +32,7 @@ defined('MOODLE_INTERNAL') || die();
 class file_manager {
 
     /** Component the file will be stored in.  */
-    const COMPONENT = 'mod_quiz';
+    const COMPONENT = 'quizaccess_seb';
 
     /** File area in the module to store files.  */
     const FILE_AREA = 'quizaccess_seb_quizsettings';
@@ -40,15 +40,17 @@ class file_manager {
     /**
      * Get a stored file object representing a draft file saved from a form.
      *
-     * @param string $itemid
-     * @return stored_file|null
+     * @param int $itemid The item ID for stored file.
+     * @return stored_file|null Returns the stored_file object representing file, or null if no file found.
+     *
      * @throws \coding_exception
      */
-    public function get_form_file_by_itemid(string $itemid) {
-        global $USER; // Uploaded files initially have a user context.
+    public function get_form_file_by_itemid($itemid) {
+        global $USER;
         $file  = null;
 
         $fs = get_file_storage();
+        // Uploaded files initially have the context of the current user.
         $context = \context_user::instance($USER->id);
         $areafiles = $fs->get_area_files($context->id, 'user', 'draft', $itemid, 'id DESC', false);
         if (count($areafiles) === 1) {
@@ -60,9 +62,9 @@ class file_manager {
     /**
      * Get a saved file from the safe exam browser file area, for a specific quiz.
      *
-     * @param string $itemid
-     * @param string $cmid
-     * @return stored_file|null
+     * @param string $itemid The item ID for stored file.
+     * @param string $cmid The course module ID for the quiz from which the file is uploaded.
+     * @return stored_file|null Returns the stored_file object representing file, or null if no file found.
      * @throws \coding_exception
      */
     public function get_module_file_by_itemid(string $itemid, string $cmid) {
@@ -82,9 +84,9 @@ class file_manager {
     /**
      * Delete a saved file from the safe exam browser file area, for a specific quiz.
      *
-     * @param string $itemid
-     * @param string $cmid
-     * @return bool
+     * @param string $itemid The item ID for stored file.
+     * @param string $cmid The course module ID for the quiz from which the file is uploaded.
+     * @return bool Whether or not the file is deleted successfully.
      * @throws \coding_exception
      */
     public function delete_module_file_by_itemid(string $itemid, string $cmid) : bool {
@@ -99,9 +101,9 @@ class file_manager {
      * Check if a file is a valid seb config file. The file may be unencrypted xml or encryped binary. If encrypted,
      * the encryption password is required to decrypt it.
      *
-     * @param stored_file $uploadedconfig
-     * @param string $password
-     * @return bool
+     * @param stored_file $uploadedconfig A file that may be a seb config file.
+     * @param string $password If the file is encrypted, this password is required to decrypt it.
+     * @return bool Whether or not the file is a valid seb config file.
      */
     public function is_file_valid_seb_config(stored_file $uploadedconfig, string $password = '') : bool {
         $content = $uploadedconfig->get_content();
@@ -114,8 +116,9 @@ class file_manager {
     /**
      * Create a new file with the same file name and contents of input, in the safe exam browser file area.
      *
-     * @param stored_file $file
-     * @param string $cmid
+     * @param stored_file $file A stored file.
+     * @param string $cmid The course module ID for the quiz from which the file is uploaded.
+     *
      * @throws \coding_exception
      * @throws \file_exception
      * @throws \stored_file_creation_exception
@@ -138,8 +141,9 @@ class file_manager {
     /**
      * Create a new file with the same file name and contents of input, in the safe exam browser file area.
      *
-     * @param stored_file $file
-     * @param string $userid
+     * @param stored_file $file A stored file.
+     * @param string $userid User ID to use for the context when saving file.
+     *
      * @throws \file_exception
      * @throws \stored_file_creation_exception
      */
@@ -159,24 +163,29 @@ class file_manager {
     /**
      * Check that it is a valid seb config file.
      *
-     * @param string $content
-     * @return bool
+     * See https://safeexambrowser.org/developer/seb-file-format.html for more information about the seb config file format.
+     *
+     * Unencrypted, SEB config files are XML files in the Apple PList format. Our initial validation is to ensure the
+     * file is in the correct format.
+     *
+     * @param string $content Contents of a file as a string.
+     * @return bool Whether or not the file is valid.
      */
     private function validate_seb_contents(string $content) : bool {
         $valid = true;
         $lines = explode(PHP_EOL, $content);
 
-        // Make sure file length is at least two lines, otherwise exit early.
+        // Make sure file length is at least two lines, otherwise exit early as it can't be a valid XML file.
         if (count($lines) < 2) {
             return false;
         }
 
-        // Check first line declares file as xml.
+        // Check first line declares file as XML, the expected file format.
         if (strpos($lines[0], '<?xml') !== 0) {
             $valid = false;
         }
 
-        // Check second line declares file as plist.
+        // Check second line declares file as PList, the expected document type.
         if (strpos($lines[1], '<!DOCTYPE plist') !== 0) {
             $valid = false;
         }
