@@ -37,8 +37,6 @@ use stored_file;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__ . '/../vendor/autoload.php');
-
 /**
  * Helper class for providing quiz settings, to make setting up quiz form manageable.
  *

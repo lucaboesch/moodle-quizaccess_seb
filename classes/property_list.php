@@ -38,8 +38,6 @@ use \DateTime;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__ . '/../vendor/autoload.php');
-
 /**
  * Wrapper for CFPropertyList to handle low level iteration.
  *

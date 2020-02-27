@@ -27,8 +27,6 @@ namespace quizaccess_seb\local\form;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__ . '/../../../vendor/autoload.php');
-
 /**
  * Form for manipulating with the template records.
  *
