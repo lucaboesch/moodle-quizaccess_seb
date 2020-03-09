@@ -244,12 +244,7 @@ class quizaccess_seb_quiz_settings_testcase extends quizaccess_seb_testcase {
      * Test using USE_SEB_TEMPLATE and have it override defaults.
      */
     public function test_using_seb_template_override_settings() {
-        $xml = file_get_contents(__DIR__ . '/sample_data/unencrypted.seb');
-
-        $template = new template();
-        $template->set('content', $xml);
-        $template->set('name', 'test');
-        $template->save();
+        $template = $this->create_template();
         $this->assertContains("<key>startURL</key><string>https://safeexambrowser.org/start</string>", $template->get('content'));
         $this->assertContains("<key>allowQuit</key><true/>", $template->get('content'));
 
@@ -301,10 +296,7 @@ class quizaccess_seb_quiz_settings_testcase extends quizaccess_seb_testcase {
             . "<key>allowWlan</key><false/><key>quitURL</key><string>http://seb.quit.url</string>"
             . "<key>sendBrowserExamKey</key><true/></dict></plist>\n";
 
-        $template = new template();
-        $template->set('content', $xml);
-        $template->set('name', 'test');
-        $template->save();
+        $template = $this->create_template($xml);
 
         $quizsettings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
         $quizsettings->set('requiresafeexambrowser', settings_provider::USE_SEB_TEMPLATE);
@@ -339,6 +331,69 @@ class quizaccess_seb_quiz_settings_testcase extends quizaccess_seb_testcase {
     }
 
     /**
+     * Test template id set correctly.
+     */
+    public function test_templateid_set_correctly_when_save_settings() {
+        $quizsettings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $this->assertEquals(0, $quizsettings->get('templateid'));
+
+        $template = $this->create_template();
+        $templateid = $template->get('id');
+
+        // Initially set to USE_SEB_TEMPLATE with a template id.
+        $this->save_settings_with_optional_template($quizsettings, settings_provider::USE_SEB_TEMPLATE, $templateid);
+        $quizsettings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $this->assertEquals($templateid, $quizsettings->get('templateid'));
+
+        // Case for USE_SEB_NO, ensure template id reverts to 0.
+        $this->save_settings_with_optional_template($quizsettings, settings_provider::USE_SEB_NO);
+        $quizsettings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $this->assertEquals(0, $quizsettings->get('templateid'));
+
+        // Reverting back to USE_SEB_TEMPLATE.
+        $this->save_settings_with_optional_template($quizsettings, settings_provider::USE_SEB_TEMPLATE, $templateid);
+
+        // Case for USE_SEB_CONFIG_MANUALLY, ensure template id reverts to 0.
+        $this->save_settings_with_optional_template($quizsettings, settings_provider::USE_SEB_CONFIG_MANUALLY);
+        $quizsettings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $this->assertEquals(0, $quizsettings->get('templateid'));
+
+        // Reverting back to USE_SEB_TEMPLATE.
+        $this->save_settings_with_optional_template($quizsettings, settings_provider::USE_SEB_TEMPLATE, $templateid);
+
+        // Case for USE_SEB_CLIENT_CONFIG, ensure template id reverts to 0.
+        $this->save_settings_with_optional_template($quizsettings, settings_provider::USE_SEB_CLIENT_CONFIG);
+        $quizsettings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $this->assertEquals(0, $quizsettings->get('templateid'));
+
+        // Reverting back to USE_SEB_TEMPLATE.
+        $this->save_settings_with_optional_template($quizsettings, settings_provider::USE_SEB_TEMPLATE, $templateid);
+
+        // Case for USE_SEB_UPLOAD_CONFIG, ensure template id reverts to 0.
+        $xml = file_get_contents(__DIR__ . '/sample_data/unencrypted.seb');
+        $this->create_module_test_file($xml, $this->quiz->cmid);
+        $this->save_settings_with_optional_template($quizsettings, settings_provider::USE_SEB_UPLOAD_CONFIG);
+        $quizsettings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $this->assertEquals(0, $quizsettings->get('templateid'));
+
+        // Case for USE_SEB_TEMPLATE, ensure template id is correct.
+        $this->save_settings_with_optional_template($quizsettings, settings_provider::USE_SEB_TEMPLATE, $templateid);
+        $quizsettings = quiz_settings::get_record(['quizid' => $this->quiz->id]);
+        $this->assertEquals($templateid, $quizsettings->get('templateid'));
+    }
+
+    /**
+     * Helper function in tests to set USE_SEB_TEMPLATE and a template id on the quiz settings.
+     */
+    public function save_settings_with_optional_template($quizsettings, $savetype, $templateid = 0) {
+        $quizsettings->set('requiresafeexambrowser', $savetype);
+        if (!empty($templateid)) {
+            $quizsettings->set('templateid', $templateid);
+        }
+        $quizsettings->save();
+    }
+
+    /**
      * Bad browser exam key data provider.
      *
      * @return array
@@ -366,7 +421,7 @@ class quizaccess_seb_quiz_settings_testcase extends quizaccess_seb_testcase {
                     'requiresafeexambrowser' => settings_provider::USE_SEB_CONFIG_MANUALLY,
                     'quizid' => 1,
                     'cmid' => 1,
-                    'expressionsallowed' => "test.com\nsecond.hello",
+                    'expressionsallowed' => "test.com\r\nsecond.hello",
                     'regexallowed' => '',
                     'expressionsblocked' => '',
                     'regexblocked' => '',
@@ -394,7 +449,7 @@ class quizaccess_seb_quiz_settings_testcase extends quizaccess_seb_testcase {
                     'cmid' => 1,
                     'expressionsallowed' => '',
                     'regexallowed' => '',
-                    'expressionsblocked' => "test.com\nsecond.hello",
+                    'expressionsblocked' => "test.com\r\nsecond.hello",
                     'regexblocked' => '',
                 ],
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -419,7 +474,7 @@ class quizaccess_seb_quiz_settings_testcase extends quizaccess_seb_testcase {
                     'quizid' => 1,
                     'cmid' => 1,
                     'expressionsallowed' => '',
-                    'regexallowed' => "test.com\nsecond.hello",
+                    'regexallowed' => "test.com\r\nsecond.hello",
                     'expressionsblocked' => '',
                     'regexblocked' => '',
                 ],
@@ -447,7 +502,7 @@ class quizaccess_seb_quiz_settings_testcase extends quizaccess_seb_testcase {
                     'expressionsallowed' => '',
                     'regexallowed' => '',
                     'expressionsblocked' => '',
-                    'regexblocked' => "test.com\nsecond.hello",
+                    'regexblocked' => "test.com\r\nsecond.hello",
                 ],
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                 . "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
@@ -473,7 +528,7 @@ class quizaccess_seb_quiz_settings_testcase extends quizaccess_seb_testcase {
                     'expressionsallowed' => "*",
                     'regexallowed' => '',
                     'expressionsblocked' => '',
-                    'regexblocked' => "test.com\nsecond.hello",
+                    'regexblocked' => "test.com\r\nsecond.hello",
                 ],
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                 . "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
@@ -506,7 +561,6 @@ class quizaccess_seb_quiz_settings_testcase extends quizaccess_seb_testcase {
             'quizid' => 1,
             'cmid' => 1,
             'requiresafeexambrowser' => '1',
-            'sebconfigfile' => '373552893',
             'showsebtaskbar' => '1',
             'showwificontrol' => '0',
             'showreloadbutton' => '1',

@@ -86,34 +86,35 @@ class quiz_settings extends persistent {
                 'type' => PARAM_INT,
                 'default' => 0,
             ],
-            'sebconfigfile' => [
-                'type' => PARAM_TEXT,
-                'default' => null,
-                'null' => NULL_ALLOWED,
-            ],
             'showsebtaskbar' => [
                 'type' => PARAM_INT,
                 'default' => 1,
+                'null' => NULL_ALLOWED,
             ],
             'showwificontrol' => [
                 'type' => PARAM_INT,
                 'default' => 0,
+                'null' => NULL_ALLOWED,
             ],
             'showreloadbutton' => [
                 'type' => PARAM_INT,
                 'default' => 1,
+                'null' => NULL_ALLOWED,
             ],
             'showtime' => [
                 'type' => PARAM_INT,
                 'default' => 1,
+                'null' => NULL_ALLOWED,
             ],
             'showkeyboardlayout' => [
                 'type' => PARAM_INT,
                 'default' => 1,
+                'null' => NULL_ALLOWED,
             ],
             'allowuserquitseb' => [
                 'type' => PARAM_INT,
                 'default' => 1,
+                'null' => NULL_ALLOWED,
             ],
             'quitpassword' => [
                 'type' => PARAM_TEXT,
@@ -123,34 +124,42 @@ class quiz_settings extends persistent {
             'linkquitseb' => [
                 'type' => PARAM_URL,
                 'default' => '',
+                'null' => NULL_ALLOWED,
             ],
             'userconfirmquit' => [
                 'type' => PARAM_INT,
                 'default' => 1,
+                'null' => NULL_ALLOWED,
             ],
             'enableaudiocontrol' => [
                 'type' => PARAM_INT,
                 'default' => 0,
+                'null' => NULL_ALLOWED,
             ],
             'muteonstartup' => [
                 'type' => PARAM_INT,
                 'default' => 0,
+                'null' => NULL_ALLOWED,
             ],
             'allowspellchecking' => [
                 'type' => PARAM_INT,
                 'default' => 0,
+                'null' => NULL_ALLOWED,
             ],
             'allowreloadinexam' => [
                 'type' => PARAM_INT,
                 'default' => 1,
+                'null' => NULL_ALLOWED,
             ],
             'activateurlfiltering' => [
                 'type' => PARAM_INT,
                 'default' => 0,
+                'null' => NULL_ALLOWED,
             ],
             'filterembeddedcontent' => [
                 'type' => PARAM_INT,
                 'default' => 0,
+                'null' => NULL_ALLOWED,
             ],
             'expressionsallowed' => [
                 'type' => PARAM_TEXT,
@@ -175,10 +184,12 @@ class quiz_settings extends persistent {
             'suppresssebdownloadlink' => [
                 'type' => PARAM_INT,
                 'default' => 0,
+                'null' => NULL_ALLOWED,
             ],
             'allowedbrowserexamkeys' => [
                 'type' => PARAM_TEXT,
                 'default' => '',
+                'null' => NULL_ALLOWED,
             ],
             'configkey' => [
                 'type' => PARAM_TEXT,
@@ -267,6 +278,7 @@ class quiz_settings extends persistent {
     private function compute_config() {
         switch ($this->get('requiresafeexambrowser')) {
             case settings_provider::USE_SEB_NO:
+                $this->process_seb_config_no();
                 break;
 
             case settings_provider::USE_SEB_CONFIG_MANUALLY:
@@ -290,10 +302,19 @@ class quiz_settings extends persistent {
     }
 
     /**
+     * Case for USE_SEB_NO.
+     */
+    private function process_seb_config_no() {
+        $this->set('templateid', 0);
+    }
+
+    /**
      * Case for USE_SEB_CONFIG_MANUALLY. This creates a plist and applies all settings from the posted form, along with
      * some defaults.
      */
     private function process_seb_config_manually() {
+        $this->set('templateid', 0);
+
         // If at any point a configuration file has been uploaded and parsed, clear the settings.
         $this->plist = new property_list();
 
@@ -325,6 +346,8 @@ class quiz_settings extends persistent {
      * password settings and some defaults.
      */
     private function process_seb_upload_config() {
+        $this->set('templateid', 0);
+
         $file = settings_provider::get_module_context_sebconfig_file($this->get('cmid'));
 
         // If there was no file, create an empty plist so the rest of this wont explode.
@@ -343,6 +366,8 @@ class quiz_settings extends persistent {
      * Case for USE_SEB_CLIENT_CONFIG. This creates an empty plist to remove the config stored.
      */
     private function process_seb_client_config() {
+        $this->set('templateid', 0);
+
         // Just setup an empty plist.
         $this->plist = new property_list();
     }
@@ -445,7 +470,7 @@ class quiz_settings extends persistent {
         return new CFDictionary([
                     'action' => new CFNumber($action),
                     'active' => new CFBoolean(true),
-                    'expression' => new CFString($rulestring),
+                    'expression' => new CFString(trim($rulestring)),
                     'regex' => new CFBoolean($isregex),
                     ]);
     }
@@ -476,10 +501,10 @@ class quiz_settings extends persistent {
     /**
      * This helper method takes list of browser exam keys in a string and splits it into an array of separate keys.
      *
-     * @param string $keys the allowed keys.
+     * @param string|null $keys the allowed keys.
      * @return array of string, the separate keys.
      */
-    private function split_keys(string $keys) : array {
+    private function split_keys($keys) : array {
         $keys = preg_split('~[ \t\n\r,;]+~', $keys, -1, PREG_SPLIT_NO_EMPTY);
         foreach ($keys as $i => $key) {
             $keys[$i] = strtolower($key);

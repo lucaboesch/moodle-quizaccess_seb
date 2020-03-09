@@ -58,11 +58,27 @@ $capabilities = array(
             'editingteacher' => CAP_ALLOW
         )
     ),
+    'quizaccess/seb:manage_seb_suppresssebdownloadlink' => array(
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array(
+            'editingteacher' => CAP_ALLOW
+        )
+    ),
+    'quizaccess/seb:manage_seb_allowedbrowserexamkeys' => array(
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array(
+            'editingteacher' => CAP_ALLOW
+        )
+    ),
 );
 
-// Individual setting capabilities.
-foreach (\quizaccess_seb\settings_provider::get_quiz_elements() as $name => $type) {
-    $capabilities["quizaccess/seb:manage_$name"] = array(
+// Individual SEB config setting capabilities.
+foreach (\quizaccess_seb\settings_provider::get_seb_config_elements() as $name => $type) {
+    $capability = \quizaccess_seb\settings_provider::build_setting_capability_name($name);
+
+    $capabilities[$capability] = array(
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array(
