@@ -375,7 +375,8 @@ class quizaccess_seb extends quiz_access_rule_base {
      */
     private function get_invalid_key_error_message() : string {
         // Return error message with download link and links to get the seb config.
-        return get_string('invalidkeys', 'quizaccess_seb') . $this->get_action_buttons();
+        return get_string('invalidkeys', 'quizaccess_seb')
+            . $this->display_buttons($this->get_action_buttons());
     }
 
     /**
@@ -384,8 +385,14 @@ class quizaccess_seb extends quiz_access_rule_base {
      * @return string
      */
     private function get_require_seb_error_message() : string {
+        $message = get_string('clientrequiresseb', 'quizaccess_seb');
+
+        if ($this->should_display_download_seb_link()) {
+            $message .= $this->display_buttons($this->get_download_seb_button());
+        }
+
         // Return error message with download link.
-        return get_string('clientrequiresseb', 'quizaccess_seb') . $this->get_download_button_only();
+        return $message;
     }
 
     /**
@@ -393,7 +400,7 @@ class quizaccess_seb extends quiz_access_rule_base {
      *
      * @return string empty or a button which has the configured seb quit link.
      */
-    private function display_quit_button() : string {
+    private function get_quit_button() : string {
         $quizsettings = $this->accessmanager->get_quiz_settings();
         $quitbutton = '';
 
@@ -403,8 +410,7 @@ class quizaccess_seb extends quiz_access_rule_base {
 
         // Only display if the link has been configured and attempts are greater than 0.
         if ($quizsettings->get('linkquitseb')) {
-            $content = html_writer::link($quizsettings->get('linkquitseb'), get_string('exitsebbutton', 'quizaccess_seb'));
-            $quitbutton = html_writer::div($content, 'btn btn-secondary');
+            $quitbutton = html_writer::link($quizsettings->get('linkquitseb'), get_string('exitsebbutton', 'quizaccess_seb'));
         }
 
         return $quitbutton;
@@ -418,12 +424,17 @@ class quizaccess_seb extends quiz_access_rule_base {
      * @return mixed a message, or array of messages, explaining the restriction
      *         (may be '' if no message is appropriate).
      */
-    public function description() {
+    public function description() : array {
         $messages = [get_string('sebrequired', 'quizaccess_seb')];
+
+        // Display download SEB config link for those who can bypass using SEB.
+        if ($this->accessmanager->can_bypass_seb() && $this->accessmanager->should_validate_config_key()) {
+            $messages[] = $this->display_buttons($this->get_download_config_button());
+        }
 
         // Those with higher level access will be able to see the button if they've made an attempt.
         if (!$this->prevent_access()) {
-            $messages[] = $this->display_quit_button();
+            $messages[] = $this->display_buttons($this->get_quit_button(), 'btn btn-secondary');
         }
 
         return $messages;
@@ -444,65 +455,94 @@ class quizaccess_seb extends quiz_access_rule_base {
     }
 
     /**
-     * Get buttons to prompt user to download SEB or config file.
+     * Prepare buttons HTML code for being displayed on the screen.
      *
-     * @return string Button html as a block.
+     * @param string $buttonshtml Html string of the buttons.
+     * @param string $class Optional CSS class (or classes as space-separated list)
+     * @param array $attributes Optional other attributes as array
+     *
+     * @return string HTML code of the provided buttons.
      */
-    private function get_action_buttons() {
-        global $OUTPUT;
+    private function display_buttons(string $buttonshtml, $class = '', array $attributes = null) : string {
+        $html = '';
 
-        $buttons = html_writer::start_div();
+        if (!empty($buttonshtml)) {
+            $html = html_writer::div($buttonshtml, $class, $attributes);
+        }
 
-        // If suppresssebdownloadlink setting is enabled, do not show download button.
-        if (empty($this->quiz->seb_suppresssebdownloadlink)) {
-            if (!empty($this->get_seb_download_url())) {
-                $buttons .= $OUTPUT->single_button(
-                    $this->get_seb_download_url(),
-                    get_string('sebdownloadbutton', 'quizaccess_seb')
-                );
-            }
+        return $html;
+    }
+
+    /**
+     * Get buttons to prompt user to download SEB or config file or launch SEB.
+     *
+     * @return string Html block of all action buttons.
+     */
+    private function get_action_buttons() : string {
+        $buttons = '';
+
+        if ($this->should_display_download_seb_link()) {
+            $buttons .= $this->get_download_seb_button();
         }
 
         // Get config for displaying links.
         $linkconfig = explode(',', get_config('quizaccess_seb', 'showseblinks'));
 
-        if (in_array('seb', $linkconfig)) {
-            $seblink = \quizaccess_seb\link_generator::get_link($this->quiz->cmid, true, is_https());
-            $buttons .= $OUTPUT->single_button($seblink, get_string('seblinkbutton', 'quizaccess_seb'), 'get');
-        }
+        // Display links to download config/launch SEB only if required.
+        if ($this->accessmanager->should_validate_config_key()) {
+            if (in_array('seb', $linkconfig)) {
+                $buttons .= $this->get_launch_seb_button();
+            }
 
-        if (in_array('http', $linkconfig)) {
-            $httplink = \quizaccess_seb\link_generator::get_link($this->quiz->cmid, false, is_https());
-            $buttons .= $OUTPUT->single_button($httplink, get_string('httplinkbutton', 'quizaccess_seb'), 'get');
+            if (in_array('http', $linkconfig)) {
+                $buttons .= $this->get_download_config_button();
+            }
         }
-
-        $buttons .= html_writer::end_div();
 
         return $buttons;
     }
 
     /**
-     * Get button that links to Safe Exam Browser download.
-     * This will return an empty string if quizaccess_seb/sebdownloadbutton is not set.
+     * Get a button to download SEB.
      *
-     * @return string HTML for button.
+     * @return string A link to download SafeExam Browser.
      */
-    private function get_download_button_only() {
+    private function get_download_seb_button() : string {
         global $OUTPUT;
-        $buttons = '';
 
-        if (empty($this->get_seb_download_url())) {
-            return $buttons;
+        $button = '';
+
+        if (!empty($this->get_seb_download_url())) {
+            $button = $OUTPUT->single_button($this->get_seb_download_url(), get_string('sebdownloadbutton', 'quizaccess_seb'));
         }
 
-        $buttons .= html_writer::start_div();
-        // If suppresssebdownloadlink setting is enabled, do not show download button.
-        if (empty($this->quiz->seb_suppresssebdownloadlink)) {
-            $buttons .= $OUTPUT->single_button($this->get_seb_download_url(), get_string('sebdownloadbutton', 'quizaccess_seb'));
-        }
-        $buttons .= html_writer::end_div();
+        return $button;
+    }
 
-        return $buttons;
+    /**
+     * Get a button to launch Safe Exam Browser.
+     *
+     * @return string A link to launch Safe Exam Browser.
+     */
+    private function get_launch_seb_button() : string {
+        global $OUTPUT;
+
+        $seblink = \quizaccess_seb\link_generator::get_link($this->quiz->cmid, true, is_https());
+
+        return $OUTPUT->single_button($seblink, get_string('seblinkbutton', 'quizaccess_seb'), 'get');
+    }
+
+    /**
+     * Get a button to download Safe Exam Browser config.
+     *
+     * @return string A link to launch Safe Exam Browser.
+     */
+    private function get_download_config_button() : string {
+        global $OUTPUT;
+
+        $httplink = \quizaccess_seb\link_generator::get_link($this->quiz->cmid, false, is_https());
+
+        return $OUTPUT->single_button($httplink, get_string('httplinkbutton', 'quizaccess_seb'), 'get');
     }
 
     /**
@@ -510,8 +550,17 @@ class quizaccess_seb extends quiz_access_rule_base {
      *
      * @return string
      */
-    private function get_seb_download_url() {
+    private function get_seb_download_url() : string {
         return get_config('quizaccess_seb', 'downloadlink');
+    }
+
+    /**
+     * Check if we should display a link to download Safe Exam Browser.
+     *
+     * @return bool
+     */
+    private function should_display_download_seb_link() : bool {
+        return empty($this->quiz->seb_suppresssebdownloadlink);
     }
 
 }
