@@ -915,6 +915,43 @@ class settings_provider {
     }
 
     /**
+     * Get allowed settings for provided SEB usage type.
+     *
+     * @param int $requiresafeexambrowser SEB usage type.
+     * @return array
+     */
+    private static function get_allowed_settings(int $requiresafeexambrowser) : array {
+        $result = [];
+        $map = self::get_seb_settings_map();
+
+        if (!key_exists($requiresafeexambrowser, $map)) {
+            return $result;
+        }
+
+        return self::build_allowed_settings($map[$requiresafeexambrowser]);
+    }
+
+    /**
+     * Recursive method to build a list of allowed settings.
+     *
+     * @param array $settings A list of settings from settings map.
+     * @return array
+     */
+    private static function build_allowed_settings(array $settings) : array {
+        $result = [];
+
+        foreach ($settings as $name => $children) {
+            $result[] = $name;
+            foreach ($children as $childname => $child) {
+                $result[] = $childname;
+                $result = array_merge($result, self::build_allowed_settings($child));
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Get the conditions that an element should be hid in the form. Expects matching using 'eq'.
      *
      * Array key is name of 'form element'/'database column (excluding prefix)'.
@@ -1001,7 +1038,7 @@ class settings_provider {
      * @param stdClass $settings Quiz settings object.
      * @return stdClass Filtered object.
      */
-    public static function filter_by_prefix(\stdClass $settings): stdClass {
+    private static function filter_by_prefix(\stdClass $settings): stdClass {
         $newsettings = new \stdClass();
         foreach ($settings as $name => $setting) {
             // Only add it, if not there.
@@ -1013,6 +1050,33 @@ class settings_provider {
     }
 
     /**
+     * Filter settings based on the setting map. Set value of not allowed settings to null.
+     *
+     * @param stdClass $settings Quiz settings.
+     * @return \stdClass
+     */
+    private static function filter_by_settings_map(stdClass $settings) : stdClass {
+        if (!isset($settings->seb_requiresafeexambrowser)) {
+            return $settings;
+        }
+
+        $newsettings = new \stdClass();
+        $newsettings->seb_requiresafeexambrowser = $settings->seb_requiresafeexambrowser;
+        $allowedsettings = self::get_allowed_settings((int)$newsettings->seb_requiresafeexambrowser);
+        unset($settings->seb_requiresafeexambrowser);
+
+        foreach ($settings as $name => $value) {
+            if (!in_array($name, $allowedsettings)) {
+                $newsettings->$name = null;
+            } else {
+                $newsettings->$name = $value;
+            }
+        }
+
+        return $newsettings;
+    }
+
+    /**
      * Filter quiz settings for this plugin only.
      *
      * @param stdClass $settings Quiz settings.
@@ -1020,6 +1084,8 @@ class settings_provider {
      */
     public static function filter_plugin_settings(stdClass $settings) : stdClass {
         $settings = self::filter_by_prefix($settings);
+        $settings = self::filter_by_settings_map($settings);
+
         return self::strip_all_prefixes($settings);
     }
 
@@ -1029,7 +1095,7 @@ class settings_provider {
      * @param \stdClass $settings Object containing settings.
      * @return \stdClass The modified settings object.
      */
-    public static function strip_all_prefixes(\stdClass $settings): stdClass {
+    private static function strip_all_prefixes(\stdClass $settings): stdClass {
         $newsettings = new \stdClass();
         foreach ($settings as $name => $setting) {
             $newname = preg_replace("/^seb_/", "", $name);
