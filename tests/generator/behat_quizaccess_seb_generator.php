@@ -15,21 +15,30 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Install script for plugin.
+ * Behat data generator the quizaccess_seb plugin.
  *
  * @package    quizaccess_seb
- * @author     Andrew Madden <andrewmadden@catalyst-au.net>
- * @copyright  2019 Catalyst IT
+ * @author     Dmitrii Metelkin <dmitriim@catalyst-au.net>
+ * @copyright  2020 Catalyst IT
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->dirroot  . '/mod/quiz/accessrule/seb/lib.php');
-
 /**
- * Custom code to be run on installing the plugin.
+ * Behat data generator for quizaccess_seb.
+ *
+ * @copyright  2020 Catalyst IT
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-function xmldb_quizaccess_seb_install() {
-    return true;
+class behat_quizaccess_seb_generator extends behat_generator_base {
+
+    protected function get_creatable_entities(): array {
+        return [
+            'seb templates' => [
+                'datagenerator' => 'template',
+                'required' => ['name'],
+            ],
+        ];
+    }
 }
