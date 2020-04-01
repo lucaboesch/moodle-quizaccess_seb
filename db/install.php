@@ -73,8 +73,6 @@ function xmldb_quizaccess_seb_install() {
             $sebsettings->regexblocked = '';
             $sebsettings->allowedbrowserexamkeys = '';
             $sebsettings->suppresssebdownloadlink = 0;
-            $sebsettings->configkey = '';
-            $sebsettings->config = '';
             $sebsettings->usermodified = get_admin()->id;
             $sebsettings->timecreated = time();
             $sebsettings->timemodified = time();
