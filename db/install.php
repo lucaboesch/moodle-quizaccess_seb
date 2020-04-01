@@ -52,7 +52,6 @@ function xmldb_quizaccess_seb_install() {
             $sebsettings->cmid = $cm->id;
             $sebsettings->templateid = 0;
             $sebsettings->requiresafeexambrowser = \quizaccess_seb\settings_provider::USE_SEB_CLIENT_CONFIG;
-            $sebsettings->sebconfigfile = null;
             $sebsettings->showsebtaskbar = null;
             $sebsettings->showwificontrol = null;
             $sebsettings->showreloadbutton = null;
@@ -70,9 +69,10 @@ function xmldb_quizaccess_seb_install() {
             $sebsettings->filterembeddedcontent = null;
             $sebsettings->expressionsallowed = null;
             $sebsettings->regexallowed = null;
+            $sebsettings->expressionsblocked = null;
             $sebsettings->regexblocked = null;
             $sebsettings->allowedbrowserexamkeys = null;
-            $sebsettings->suppresssebdownloadlink = null;
+            $sebsettings->suppresssebdownloadlink = 0;
             $sebsettings->usermodified = get_admin()->id;
             $sebsettings->timecreated = time();
             $sebsettings->timemodified = time();
